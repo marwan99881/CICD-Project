@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+    environment {
+        dockerRun = "docker run -p 8000:80 -d --name cloudknowledges  marwan43/demo-project:latest"
+        dockerrm = "docker container rm -f cloudknowledges"
+        dockerimagerm = "docker image rmi  marwan43/demo-project"
+    }
+        
+
+    stages {
+        stage('PUll') {
+            steps {
+                git 'https://github.com/marwan99881/CICD-Project.git'
+            }
+        }
+        
+        stage("Build") {
+            steps {
+                sh 'docker image build -t $JOB_NAME:v1.$BUILD_ID .'
+                sh 'docker image tag $JOB_NAME:v1.$BUILD_ID marwan43/$JOB_NAME:v1.$BUILD_ID'
+                sh 'docker image tag $JOB_NAME:v1.$BUILD_ID marwan43/$JOB_NAME:latest'
+                
+            }
+        }
+        
+        stage("Push") {
+            steps {
+                withCredentials([string(credentialsId: 'mobilehubpassword', variable: 'mobilehubpassword')]) {
+    // some block
+    sh 'docker login -u marwan43 -p ${mobilehubpassword}'
+    sh 'docker image push marwan43/$JOB_NAME:v1.$BUILD_ID'
+    sh 'docker image push marwan43/$JOB_NAME:latest'
+    sh 'docker image rmi $JOB_NAME:v1.$BUILD_ID marwan43/$JOB_NAME:v1.$BUILD_ID marwan43/$JOB_NAME:latest'
+}
+            }
+        }
+        
+        stage("Deployment") {
+            steps {
+             sshagent(['hostpassword']) {
+    // some block           
+   
+                 
+                 sh "ssh -o StricHostKeyChecking=no ec2-user@3.91.27.161  ${env.dockerRun}"
+    
+}
+        }
+        }
+    }
+}
